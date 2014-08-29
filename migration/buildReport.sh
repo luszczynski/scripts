@@ -98,10 +98,32 @@ function sinteticoReport() {
 	
 	# Arquivos descritores
 	echo -n "Verificando arquivos descritores..."
-	for arq in "Maven#pom.xml" "Ant#build*.xml" "Jasper Report#*.jrxml" "Sun Web Descriptor#sun-web.xml" "EJB Descriptor#ejb-jar.xml" "Log4J#log4j.xml" \
-"Log4J Prop#log4j.properties" "EAP Application#application.xml" "JSF#faces-config*.xml" "Portlet#portlet.xml" "WAR Application#web.xml" "Struts#struts-config.xml" \
-"Bean Validation#validation.xml" "JBoss xml#jboss.xml" "JBoss Web#jboss-web.xml" "JBoss app xml#jboss-app.xml" "Validation Rules#validation-rules.xml" \
-"JBoss Service#jboss-service.xml" "Persistence.xml#persistence.xml" "Services.xml#services.xml" "TLD#*.tld" "Dist#dist.xml" ;
+	for arq in "Maven#pom.xml" \
+	"Ant#build*.xml" \
+	"Jasper Report#*.jrxml" \
+	"Sun Web Descriptor#sun-web.xml" \
+	"EJB Descriptor#ejb-jar.xml" \
+	"Log4J#log4j.xml" \
+	"Log4J Prop#log4j.properties" \
+	"EAP Application#application.xml" \
+	"JSF#faces-config*.xml" \
+	"Portlet#portlet.xml" \
+	"WAR Application#web.xml" \
+	"Struts#struts-config.xml" \
+	"Bean Validation#validation.xml" \
+	"JBoss xml#jboss.xml" \
+	"JBoss Web#jboss-web.xml" \
+	"JBoss app xml#jboss-app.xml" \
+	"Validation Rules#validation-rules.xml" \
+	"JBoss Service#jboss-service.xml" \
+	"Persistence.xml#persistence.xml" \
+	"Services.xml#services.xml" \
+	"TLD#*.tld" \
+	"Dist#dist.xml" \
+	"Sun Application#sun-application.xml" \
+	"MANIFEST#MANIFEST.MF" \
+	"Sun EJB Descriptor#sun-ejb-jar"
+	;
 	do	
 		tec=$(echo $arq | cut -d"#" -f1)
 		arqDesc=$(echo $arq | cut -d"#" -f2)
@@ -173,44 +195,64 @@ function sinteticoReport() {
 	check_error
 }
 	
+function newRules() {
+	# Gerando arquivos de novas regras
+	echo -n "Verificando pacotes ainda não existentes no windup..."
+	fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
+	check_error
 
-# Gerando arquivos de novas regras
-echo -n "Verificando pacotes ainda não existentes no windup..."
-fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
-check_error
+	echo "###############################################################################"
+	echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
+	echo "###############################################################################"
+	echo "Enter para prosseguir"
+	read lixo
+}
 
-echo "###############################################################################"
-echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
-echo "###############################################################################"
-echo "Enter para prosseguir"
-read lixo
+function createBusca() {
+	echo -n "Criando busca.txt "
+	cat $WINDUP_PATH/rules/extensions/extension-example.windup.xml | grep 'java-classification source-type="IMPORT"' | cut -d'=' -f4 | cut -d'"' -f2 > $BUSCA_FILE
+	echo "EJB 1.x/2.x - Home Interface" >> $BUSCA_FILE
+	echo "EJB 1.x/2.x - Remote Interface" >> $BUSCA_FILE
+	echo "EJB 1.x/2.x - Entity Bean" >> $BUSCA_FILE
+	echo "EJB 1.x/2.x - Session Bean" >> $BUSCA_FILE
+	echo "EJB 2.x - Local Home" >> $BUSCA_FILE
+	echo "EJB 2.x - Local Object" >> $BUSCA_FILE
+	echo "EJB 2.x - Message Driven Bean" >> $BUSCA_FILE
+	echo "EJB 3.x - Message Driven Bean" >> $BUSCA_FILE
+	echo "EJB 3.x - Local Session Bean Interface" >> $BUSCA_FILE
+	echo "EJB 3.x - Remote Session Bean Interface" >> $BUSCA_FILE
+	echo "EJB 3.x - Stateless Session Bean" >> $BUSCA_FILE
+	echo "EJB 3.x - Stateful Session Bean" >> $BUSCA_FILE
+	echo ".jsp" >> $BUSCA_FILE
+	echo ".xhtml" >> $BUSCA_FILE
+	check_error
+}
 
-echo -n "Criando busca.txt "
-cat $WINDUP_PATH/rules/extensions/extension-example.windup.xml | grep 'java-classification source-type="IMPORT"' | cut -d'=' -f4 | cut -d'"' -f2 > $BUSCA_FILE
-echo "EJB 1.x/2.x - Home Interface" >> $BUSCA_FILE
-echo "EJB 1.x/2.x - Remote Interface" >> $BUSCA_FILE
-echo "EJB 1.x/2.x - Entity Bean" >> $BUSCA_FILE
-echo "EJB 1.x/2.x - Session Bean" >> $BUSCA_FILE
-echo "EJB 2.x - Local Home" >> $BUSCA_FILE
-echo "EJB 2.x - Local Object" >> $BUSCA_FILE
-echo "EJB 2.x - Message Driven Bean" >> $BUSCA_FILE
-echo "EJB 3.x - Message Driven Bean" >> $BUSCA_FILE
-echo "EJB 3.x - Local Session Bean Interface" >> $BUSCA_FILE
-echo "EJB 3.x - Remote Session Bean Interface" >> $BUSCA_FILE
-echo "EJB 3.x - Stateless Session Bean" >> $BUSCA_FILE
-echo "EJB 3.x - Stateful Session Bean" >> $BUSCA_FILE
-echo ".jsp" >> $BUSCA_FILE
-echo ".xhtml" >> $BUSCA_FILE
-check_error
+function limpaFonte() {
+	# Limpa fontes de arquivos invalidos e vazios
+	echo -n "Limpando fontes (arquivos vazios e com pacote default)..."
+	find $SISTEMAS_PATH -name *.java -type f -empty -exec rm -i {} \;
+	for filerm in $(find $SISTEMAS_PATH -name *.java -exec grep -L package {} \;)
+	do
+		rm -i $filerm
+	done
+	check_error
+}
 
-# Limpa fontes de arquivos invalidos e vazios
-echo -n "Limpando fontes (arquivos vazios e com pacote default)..."
-find $SISTEMAS_PATH -name *.java -type f -empty -exec rm -i {} \;
-for filerm in $(find $SISTEMAS_PATH -name *.java -exec grep -L package {} \;)
-do
-	rm -i $filerm
-done
-check_error
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+
+# Creating new rules
+newRules
+
+# Busca.txt
+createBusca
+
+# Limpa os fontes
+limpaFonte
 
 # Gera relatorio
 for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
