@@ -122,7 +122,7 @@ function sinteticoReport() {
 	"Dist#dist.xml" \
 	"Sun Application#sun-application.xml" \
 	"MANIFEST#MANIFEST.MF" \
-	"Sun EJB Descriptor#sun-ejb-jar"
+	"Sun EJB Descriptor#sun-ejb-jar.xml"
 	;
 	do	
 		tec=$(echo $arq | cut -d"#" -f1)
@@ -144,6 +144,8 @@ function sinteticoReport() {
    			echo -e "$linha: \033[0;31m$result\033[0m" >> $SINTETICO_REPORT/$2
    		fi
 	done < $BUSCA_FILE
+	JSP_QTD=$(cat $WINDUP_REPORT/$2/index.html | grep jsp.html | cut -d'"' -f2 | wc -l)	
+	echo -e "JSPs: \033[0;31m$JSP_QTD\033[0m" >> $SINTETICO_REPORT/$2
 	check_error
 
 	# Dependencias
@@ -183,6 +185,11 @@ function sinteticoReport() {
 
    		fi
 	done < $BUSCA_FILE
+	
+	#JSPs
+	declare -a resultJSP=$($WINDUP_REPORT/$2/index.html | grep jsp.html | cut -d'"' -f2 | sed 's/\.html$//g')
+	echo -e "\033[0;32m JSPs  \033[0m" >> $SINTETICO_REPORT/$2	
+	printf -- '%s\n' "${resultJSP[@]}" >> $SINTETICO_REPORT/$2
 	check_error
 
 	# JARs já fornecidos pelo servidor de aplicação
@@ -223,7 +230,7 @@ function createBusca() {
 	echo "EJB 3.x - Remote Session Bean Interface" >> $BUSCA_FILE
 	echo "EJB 3.x - Stateless Session Bean" >> $BUSCA_FILE
 	echo "EJB 3.x - Stateful Session Bean" >> $BUSCA_FILE
-	echo ".jsp" >> $BUSCA_FILE
+	#echo ".jsp" >> $BUSCA_FILE
 	echo ".xhtml" >> $BUSCA_FILE
 	check_error
 }
