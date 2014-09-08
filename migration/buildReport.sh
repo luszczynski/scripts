@@ -11,7 +11,7 @@ TATTLETALE_REPORT="/home/admin1/redhat/relatorios/tattletale/reportTattletale"
 TREE_REPORT="/home/admin1/redhat/relatorios/tree/reportTree"
 SINTETICO_REPORT="/home/admin1/redhat/relatorios/sintetico/reportSintetico"
 
-JAVA_PKG="br.gov"
+JAVA_PKG="br.gov.caixa"
 BUSCA_FILE=busca.txt
 PACOTE_FILE=pacote.txt
 WINDUP_LOG=windup.log
@@ -122,8 +122,7 @@ function sinteticoReport() {
 	"Dist#dist.xml" \
 	"Sun Application#sun-application.xml" \
 	"MANIFEST#MANIFEST.MF" \
-	"Sun EJB Descriptor#sun-ejb-jar.xml"
-	;
+	"Sun EJB Descriptor#sun-ejb-jar.xml";
 	do	
 		tec=$(echo $arq | cut -d"#" -f1)
 		arqDesc=$(echo $arq | cut -d"#" -f2)
@@ -187,7 +186,7 @@ function sinteticoReport() {
 	done < $BUSCA_FILE
 	
 	#JSPs
-	declare -a resultJSP=$($WINDUP_REPORT/$2/index.html | grep jsp.html | cut -d'"' -f2 | sed 's/\.html$//g')
+	declare -a resultJSP=$(cat $WINDUP_REPORT/$2/index.html | grep jsp.html | cut -d'"' -f2 | sed 's/\.html$//g')
 	echo -e "\033[0;32m JSPs  \033[0m" >> $SINTETICO_REPORT/$2	
 	printf -- '%s\n' "${resultJSP[@]}" >> $SINTETICO_REPORT/$2
 	check_error
@@ -203,16 +202,32 @@ function sinteticoReport() {
 }
 	
 function newRules() {
-	# Gerando arquivos de novas regras
-	echo -n "Verificando pacotes ainda não existentes no windup..."
-	fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
-	check_error
 
-	echo "###############################################################################"
-	echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
-	echo "###############################################################################"
-	echo "Enter para prosseguir"
-	read lixo
+	if [ "x$1" = "x" ] ;then
+		# Gerando arquivos de novas regras
+		echo -n "Verificando pacotes ainda não existentes no windup..."
+		fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
+		check_error
+
+		echo "###############################################################################"
+		echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
+		echo "###############################################################################"
+		echo "Enter para prosseguir"
+		read lixo
+	else
+		# Gerando arquivos de novas regras
+		echo -n "Verificando pacotes ainda não existentes no windup..."
+		fgrep -R "import " $SISTEMAS_PATH/$1 | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
+		check_error
+
+		echo "###############################################################################"
+		echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
+		echo "###############################################################################"
+		echo "Enter para prosseguir"
+		read lixo
+	fi
+
+	
 }
 
 function createBusca() {
@@ -236,14 +251,28 @@ function createBusca() {
 }
 
 function limpaFonte() {
-	# Limpa fontes de arquivos invalidos e vazios
-	echo -n "Limpando fontes (arquivos vazios e com pacote default)..."
-	find $SISTEMAS_PATH -name *.java -type f -empty -exec rm -i {} \;
-	for filerm in $(find $SISTEMAS_PATH -name *.java -exec grep -L package {} \;)
-	do
-		rm -i $filerm
-	done
-	check_error
+
+	if [ "x$1" = "x" ] ;then
+		# Limpa fontes de arquivos invalidos e vazios
+		echo -n "Limpando fontes (arquivos vazios e com pacote default)..."
+		find $SISTEMAS_PATH -name *.java -type f -empty -exec rm -i {} \;
+		for filerm in $(find $SISTEMAS_PATH -name *.java -exec grep -L package {} \;)
+		do
+			rm -i $filerm
+		done
+		check_error
+	else
+		# Limpa fontes de arquivos invalidos e vazios
+		echo -n "Limpando fontes (arquivos vazios e com pacote default)..."
+		find $SISTEMAS_PATH/$1 -name *.java -type f -empty -exec rm -i {} \;
+		for filerm in $(find $SISTEMAS_PATH/$1 -name *.java -exec grep -L package {} \;)
+		do
+			rm -i $filerm
+		done
+		check_error
+	fi
+
+
 }
 
 #########################################################################################################
@@ -252,41 +281,99 @@ function limpaFonte() {
 #########################################################################################################
 #########################################################################################################
 
-# Creating new rules
-newRules
 
-# Busca.txt
-createBusca
 
-# Limpa os fontes
-limpaFonte
+if [ "$#" = 0 ] ;then
 
-# Gera relatorio
-for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
-do
-	sistema=$(echo $sistema_path | cut -d'/' -f6)
+	# Creating new rules
+	newRules
+
+	# Busca.txt
+	createBusca
+
+	# Limpa os fontes
+	limpaFonte
+
+	# Gera relatorio
+	for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
+	do
+		sistema=$(echo $sistema_path | cut -d'/' -f6)
 	
-	echo -e "\n\n### $sistema ###"
+		echo -e "\n\n### $sistema ###"
 
-	windupReport $sistema_path $sistema
+		windupReport $sistema_path $sistema
 
-	tattletaleReport $sistema_path $sistema
+		tattletaleReport $sistema_path $sistema
 	
-	treeSimpleReport $sistema_path $sistema
+		treeSimpleReport $sistema_path $sistema
 
-	treeFullReport $sistema_path $sistema
+		treeFullReport $sistema_path $sistema
 
-	sinteticoReport $sistema_path $sistema
+		sinteticoReport $sistema_path $sistema
 	
-done
+	done
 
-# Limpa dados
-#clearSource $WINDUP_REPORT
+	# Limpa dados
+	#clearSource $WINDUP_REPORT
 
-#limpa arquivos tmp
-rm $PACOTE_FILE
-rm $BUSCA_FILE
-rm $WINDUP_LOG
+	#limpa arquivos tmp
+	rm $PACOTE_FILE
+	rm $BUSCA_FILE
+	rm $WINDUP_LOG
 
-# zipa relatório
-#tar -jcvf relatorio.tar.bz2 $WINDUP_REPORT
+	# zipa relatório
+	#tar -jcvf relatorio.tar.bz2 $WINDUP_REPORT
+
+
+
+elif [ "$#" = 1 ] ;then
+	
+	# Creating new rules
+	newRules $1
+
+	# Busca.txt
+	createBusca
+
+	# Limpa os fontes
+	limpaFonte $1
+
+	# Gera relatorio
+	#for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
+	#do
+		#sistema=$(echo $sistema_path | cut -d'/' -f6)
+	
+	sistema_path=$SISTEMAS_PATH/$1
+
+	echo -e "\n\n### $1 ###"
+
+	windupReport $sistema_path $1
+
+	tattletaleReport $sistema_path $1
+	
+	treeSimpleReport $sistema_path $1
+
+	treeFullReport $sistema_path $1
+
+	sinteticoReport $sistema_path $1
+	
+	#done
+
+	# Limpa dados
+	#clearSource $WINDUP_REPORT
+
+	#limpa arquivos tmp
+	rm $PACOTE_FILE
+	rm $BUSCA_FILE
+	rm $WINDUP_LOG
+
+	# zipa relatório
+	#tar -jcvf relatorio.tar.bz2 $WINDUP_REPORT
+
+
+
+fi
+
+
+
+
+
