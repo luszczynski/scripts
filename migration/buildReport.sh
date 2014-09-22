@@ -50,14 +50,17 @@ function clearSource {
 # $1 = $sistema_path (path do sistema)
 # $2 = $sistema (nome do sistema)
 function windupReport() {
-	java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source true -javaPkgs $JAVA_PKG -output $WINDUP_REPORT/$2  >> $WINDUP_LOG &
+	#java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source true -javaPkgs $JAVA_PKG -output $WINDUP_REPORT/$2  >> $WINDUP_LOG &
 	
-	while [[ $(ps aux | grep "windup") ]]
-	do
-		p=$(tail -1 $WINDUP_LOG | grep "Interrogating" | cut -d" " -f5,6,7)
-		echo -ne "Gerando relatorio windup... $p"\\r
-		#sleep 2
-	done
+	echo -ne "Gerando relatorio windup..."
+	java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source true -javaPkgs $JAVA_PKG -output $WINDUP_REPORT/$2  >> $WINDUP_LOG
+	
+	#while [[ $(ps aux | grep "windup") ]]
+	#do
+	#	p=$(tail -1 $WINDUP_LOG | grep "Interrogating" | cut -d" " -f5,6,7)
+	#	echo -ne "Gerando relatorio windup... $p"\\r
+	#	#sleep 2
+	#done
 
 	check_error
 }
@@ -245,6 +248,15 @@ function createBusca() {
 	echo "EJB 3.x - Remote Session Bean Interface" >> $BUSCA_FILE
 	echo "EJB 3.x - Stateless Session Bean" >> $BUSCA_FILE
 	echo "EJB 3.x - Stateful Session Bean" >> $BUSCA_FILE
+	echo "Hibernate Mapping" >> $BUSCA_FILE
+	echo "Hibernate 2.0 Mapping" >> $BUSCA_FILE
+	echo "JSP Tag Library" >> $BUSCA_FILE
+	echo "Commons Validator Rules Configuration" >> $BUSCA_FILE
+	echo "Hibernate Configuration" >> $BUSCA_FILE
+	echo "Oracle Application Platform Web Descriptor" >> $BUSCA_FILE
+	echo "JasperReports Report Design" >> $BUSCA_FILE
+	echo "WAR Application Descriptor" >> $BUSCA_FILE
+	echo "ArchiveMeta Manifest" >> $BUSCA_FILE
 	#echo ".jsp" >> $BUSCA_FILE
 	echo ".xhtml" >> $BUSCA_FILE
 	check_error
@@ -297,8 +309,9 @@ if [ "$#" = 0 ] ;then
 	# Gera relatorio
 	for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
 	do
-		sistema=$(echo $sistema_path | cut -d'/' -f6)
-	
+		#sistema=$(echo $sistema_path | cut -d'/' -f6)
+		sistema=$(echo $sistema_path | awk -F/ '{ print $NF }')
+		
 		echo -e "\n\n### $sistema ###"
 
 		windupReport $sistema_path $sistema
@@ -314,7 +327,9 @@ if [ "$#" = 0 ] ;then
 	done
 
 	# Limpa dados
-	#clearSource $WINDUP_REPORT
+	echo "Limpando fontes..."
+	clearSource $WINDUP_REPORT
+	check_error
 
 	#limpa arquivos tmp
 	rm $PACOTE_FILE
