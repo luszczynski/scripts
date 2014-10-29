@@ -1,17 +1,19 @@
 #!/bin/bash
 
-WINDUP_PATH="/home/admin1/redhat/software/windup/windup-cli-0.6.8"
+WINDUP_PATH="/home/gustavo/applications/windup-cli-0.6.8/windup-cli-0.6.8"
 TREE_PATH="/home/admin1/redhat/software/tree"
-TATTLETALE_PATH="/home/admin1/redhat/software/tattletale/tattletale-1.1.2.Final"
+TATTLETALE_PATH="/home/gustavo/applications/tattletale-1.1.2.Final"
 
-SISTEMAS_PATH="/home/admin1/redhat/sistemas"
+SISTEMAS_PATH="/home/gustavo/redhat/clientes/DPRF/migracao/sistemas_fonte"
 
-WINDUP_REPORT="/home/admin1/redhat/relatorios/windup/reportWindup"
-TATTLETALE_REPORT="/home/admin1/redhat/relatorios/tattletale/reportTattletale"
-TREE_REPORT="/home/admin1/redhat/relatorios/tree/reportTree"
-SINTETICO_REPORT="/home/admin1/redhat/relatorios/sintetico/reportSintetico"
+WINDUP_REPORT="/home/gustavo/redhat/clientes/DPRF/migracao/relatorios/windup"
+TATTLETALE_REPORT="/home/gustavo/redhat/clientes/DPRF/migracao/relatorios/tattletale"
+TREE_REPORT="/home/gustavo/redhat/clientes/DPRF/migracao/relatorios/tree"
+SINTETICO_REPORT="/home/gustavo/redhat/clientes/DPRF/migracao/relatorios/sintetico"
 
-JAVA_PKG="br.gov.caixa"
+SOURCE=true
+
+JAVA_PKG="br.gov.dprf:dprf:beans:servlet"
 BUSCA_FILE=busca.txt
 PACOTE_FILE=pacote.txt
 WINDUP_LOG=windup.log
@@ -53,7 +55,7 @@ function windupReport() {
 	#java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source true -javaPkgs $JAVA_PKG -output $WINDUP_REPORT/$2  >> $WINDUP_LOG &
 	
 	echo -ne "Gerando relatorio windup..."
-	java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source true -javaPkgs $JAVA_PKG -output $WINDUP_REPORT/$2  >> $WINDUP_LOG
+	java -jar $WINDUP_PATH/windup-cli.jar -input $1 -source $SOURCE -javaPkgs $JAVA_PKG -fetchRemote true -output $WINDUP_REPORT/$2  >> $WINDUP_LOG
 	
 	#while [[ $(ps aux | grep "windup") ]]
 	#do
@@ -203,14 +205,43 @@ function sinteticoReport() {
 	done
 	check_error
 }
+
+function findRules() {
+	fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $1" | grep -v "import java." | cut -d":" -f 2 | uniq | sort | sed '/^import/!d' | cut -d" " -f2 | awk -F. '{
+	if(match(substr($2,0,1),"[A-Z]"))
+	print "<windup:java-classification source-type=\042"$1"\042 description=\042"$1"\042 effort=\0420\042/>"
+	else if(match(substr($3,0,1),"[A-Z]"))
+	print "<windup:java-classification source-type=\042"$1"."$2"\042 description=\042"$1"."$2"\042 effort=\0420\042/>"
+	else if (match(substr($4,0,1),"[A-Z]"))
+	print "<windup:java-classification source-type=\042"$1"."$2"."$3"\042 description=\042"$1"."$2"."$3"\042 effort=\0420\042/>"
+	else
+	print "<windup:java-classification source-type=\042"$1"."$2"."$3"\042 description=\042"$1"."$2"."$3"\042 effort=\0420\042/>"
+	fi
+	}' | uniq > $PACOTE_FILE
+	echo >> $PACOTE_FILE
+	fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $1" | grep -v "import java." | cut -d":" -f 2 | uniq | sort | sed '/^import/!d' | cut -d" " -f2 | awk -F. '{
+	if(match(substr($2,0,1),"[A-Z]"))
+	print "<value>"$1"</value>"
+	else if(match(substr($3,0,1),"[A-Z]"))
+	print "<value>"$1"."$2"</value>"
+	else if (match(substr($4,0,1),"[A-Z]"))
+	print "<value>"$1"."$2"."$3"</value>"
+	else
+	print "<value>"$1"."$2"."$3"</value>"
+	fi
+	}' | uniq >> $PACOTE_FILE
+}
 	
 function newRules() {
 
 	if [ "x$1" = "x" ] ;then
 		# Gerando arquivos de novas regras
 		echo -n "Verificando pacotes ainda não existentes no windup..."
-		fgrep -R "import " $SISTEMAS_PATH | grep -v "@import" | grep -v "<import" |  grep -v "import javax" | grep -v "import $JAVA_PKG" | grep -v "import java." | cut -d":" -f 2 | sort | uniq | less > $PACOTE_FILE
+		findRules $JAVA_PKG
 		check_error
+
+
+
 
 		echo "###############################################################################"
 		echo "#### Pare tudo! Abra o arquivo pacotes.txt e crie as novas regras do windup ####"
@@ -305,31 +336,59 @@ if [ "$#" = 0 ] ;then
 
 	# Limpa os fontes
 	limpaFonte
+	
+	if [ $SOURCE == true ]; then
+		# Gera relatorio
 
-	# Gera relatorio
-	for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
-	do
-		#sistema=$(echo $sistema_path | cut -d'/' -f6)
-		sistema=$(echo $sistema_path | awk -F/ '{ print $NF }')
+		for sistema_path in $(find $SISTEMAS_PATH -maxdepth 1 -type d | sed -e "1d")
+		do
+			#sistema=$(echo $sistema_path | cut -d'/' -f6)
+
+			sistema=$(echo $sistema_path | awk -F/ '{ print $NF }')
 		
-		echo -e "\n\n### $sistema ###"
+			echo -e "\n\n### $sistema ###"
 
-		windupReport $sistema_path $sistema
+			windupReport $sistema_path $sistema
 
-		tattletaleReport $sistema_path $sistema
+			tattletaleReport $sistema_path $sistema
 	
-		treeSimpleReport $sistema_path $sistema
+			treeSimpleReport $sistema_path $sistema
 
-		treeFullReport $sistema_path $sistema
+			treeFullReport $sistema_path $sistema
 
-		sinteticoReport $sistema_path $sistema
+			sinteticoReport $sistema_path $sistema
 	
-	done
+		done
+	else
+		for sistema_path in $(ls -d $SISTEMAS_PATH/*)
+		do
+			sistema=$(echo $sistema_path | awk -F/ '{ print $NF }')
+		
+			echo $sistema_path
+			
+			echo -e "\n\n### $sistema ###"
+
+			windupReport $sistema_path $sistema
+
+			tattletaleReport $sistema_path $sistema
+	
+			treeSimpleReport $sistema_path $sistema
+
+			treeFullReport $sistema_path $sistema
+
+			sinteticoReport $sistema_path $sistema
+	
+		done
+	
+		
+	fi
+	
+	
 
 	# Limpa dados
-	echo "Limpando fontes..."
-	clearSource $WINDUP_REPORT
-	check_error
+	#echo "Limpando fontes..."
+	#clearSource $WINDUP_REPORT
+	#check_error
 
 	#limpa arquivos tmp
 	rm $PACOTE_FILE
